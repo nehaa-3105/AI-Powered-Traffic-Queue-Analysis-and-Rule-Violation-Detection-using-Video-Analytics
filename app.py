@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
-
+from processor import process_video
 # -------------------------------
 # Page Config
 # -------------------------------
@@ -20,17 +20,36 @@ st.caption("Video Analytics Dashboard using YOLO + AI Models")
 # -------------------------------
 # File Check
 # -------------------------------
-required_files = ["traffic.mp4", "yolo_output.mp4", "traffic_data.csv"]
-for f in required_files:
-    if not os.path.exists(f):
-        st.error(f"Missing file: {f}")
-        st.stop()
+uploaded_file = st.file_uploader("Upload Traffic Video", type=["mp4"])
 
-# -------------------------------
-# Load Data
-# -------------------------------
-df = pd.read_csv("traffic_data.csv")
+if uploaded_file is None:
+    st.warning("Please upload a video to start analysis.")
+    st.stop()
 
+os.makedirs("uploads", exist_ok=True)
+os.makedirs("outputs", exist_ok=True)
+
+input_path = f"uploads/{uploaded_file.name}"
+
+# Save file only once
+if not os.path.exists(input_path):
+    with open(input_path, "wb") as f:
+        f.write(uploaded_file.read())
+
+# Process only once
+if "processed" not in st.session_state:
+
+    with st.spinner("Processing video with YOLO..."):
+        process_video(
+            input_path,
+            "outputs/yolo_output.mp4",
+            "outputs/traffic_data.csv"
+        )
+
+    st.session_state.processed = True
+    st.success("Processing Complete!")
+
+df = pd.read_csv("outputs/traffic_data.csv")
 # -------------------------------
 # Sidebar
 # -------------------------------
@@ -67,11 +86,11 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("### 📥 Raw Traffic Input Video")
-    st.video("traffic.mp4")
+    st.video(input_path)
 
 with col2:
     st.markdown("### 🤖 YOLO Output Video")
-    st.video("yolo_output.mp4")
+    st.video("outputs/yolo_output.mp4")
 
 st.markdown("---")
 
